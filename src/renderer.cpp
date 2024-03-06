@@ -5,8 +5,6 @@
 #include <optional>
 #include <cassert>
 #include <array>
-#include <cmath>
-#include <vector>
 #include <iostream>
 
 #include <glad/gl.h>
@@ -21,11 +19,11 @@ namespace opengles_workspace
 		, fragmentShader(glCreateShader(GL_FRAGMENT_SHADER))
 		, shaderProgram (glCreateProgram())
 	{
-		glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+		glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
 		// Compile the Vertex Shader into machine code
 		glCompileShader(vertexShader);
 
-		glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+		glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
 		// Compile the Vertex Shader into machine code
 		glCompileShader(fragmentShader);
 
@@ -92,10 +90,11 @@ namespace opengles_workspace
 				GLfloat lower_bottom_right_y = y - side_length;
 
 				//pushing coordinates of squares needing to be colored
-				//squares with first color when i and j are even and the row is even OR when i and j are odd and the row is odd and is_same_index is true
-				//squares with second color i and j are odd when row even and odd when row is even and is_same_index is false
-				if((((i % 2 != 0 && j % 2 != 0) || (i % 2 == 0 && j % 2 == 0)) && is_same_index == true) ||
-				  (((i % 2 == 0 && j % 2 == 0) || (i % 2 != 0 && j % 2 != 0)) && is_same_index == false))
+				//squares with first color: when i and j are both even OR when i and j are both odd
+				//squares with second color: when i is even and j is odd OR viceversa
+				//differentiate between squares sets with is_same_index  
+				if((((i % 2 != 0 && j % 2 != 0) || (i % 2 == 0 && j % 2 == 0)) && is_same_index) ||
+				  (((i % 2 == 0 && j % 2 != 0) || (i % 2 != 0 && j % 2 == 0)) && !is_same_index))
 				{
 					vertices.push_back(upper_top_left_x);
 					vertices.push_back(upper_top_left_y);
@@ -120,7 +119,7 @@ namespace opengles_workspace
 		return vertices;
 	}
 
-	void GLFWRenderer::DrawShapes(std::vector<GLfloat> vertices, std::vector<GLfloat> color)
+	void GLFWRenderer::DrawShapes(std::vector<GLfloat> vertices, size_t totalVerticesPerShape, std::vector<GLfloat> color)
 	{
 		// Make the VAO the current Vertex Array Object by binding it
 		glBindVertexArray(VAO);
@@ -138,9 +137,17 @@ namespace opengles_workspace
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-		// Clean the back buffer and assign the new color to it
-		glClear(GL_COLOR_BUFFER_BIT);
+		if (!is_background_colored)
+		{
+			//cbeige
+			glClearColor(1.0f, 0.8f, 0.4f, 1.0f);
+			//gray
+			//glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+			// Clean the back buffer and assign the new color to it
+			glClear(GL_COLOR_BUFFER_BIT);
+			is_background_colored = true;
+		}
+		
 		// Tell OpenGL which Shader Program we want to use
 		glUseProgram(shaderProgram);
 		//uniform for rendering different colors
@@ -149,13 +156,7 @@ namespace opengles_workspace
 		// Bind the VAO so OpenGL knows to use it
 		glBindVertexArray(VAO);
 		// Draw the triangle using the GL_TRIANGLES primitive
-		glDrawArrays(GL_TRIANGLES, 0, kNrOfVerticesPerSquare * kNrSquaresToBeColored);
-
-		// Delete all the objects we've created
-		//glDeleteVertexArrays(1, &VAO);
-		//glDeleteBuffers(1, &VBO);
-		//glDeleteProgram(shaderProgram);
-
+		glDrawArrays(GL_TRIANGLES, 0, totalVerticesPerShape);
 
 		// GL code end
 		glfwSwapBuffers(window());
@@ -164,25 +165,28 @@ namespace opengles_workspace
 	void GLFWRenderer::render() {
 		if(kNrTotalSquares == 0)
 			return;
-		std::cout << "after return render";
+		
 		//get first set of squares coordinates
 		std::vector<GLfloat> vertices {PopulateVertices(true)};
-		//brown color
-		std::vector<GLfloat> color {0.8f, 0.35f, 0.05f};
-		//color the squares
-		DrawShapes(vertices, color);
+		std::vector<GLfloat> margin_coordinates 
+		{
+			-0.505,  0.505,
+			 0.505,  0.505,
+			-0.505, -0.505,
+
+			 0.505,  0.505,
+			-0.505, -0.505,
+			 0.505, -0.505
+		};
+		vertices.insert(vertices.end(), margin_coordinates.begin(), margin_coordinates.end());
+
+		std::vector<GLfloat> white_color {1.0f, 1.0f, 1.0f};
+		DrawShapes(vertices, kNrOfVerticesPerSquare * kNrSquaresToBeColored + kNrOfVerticesPerSquare, white_color);
 
 		//get second set of squares coordinates
-		vertices = PopulateVertices(true);
-		//brown color
-		std::vector<GLfloat> color1 {1.0f, 1.0f, 1.0f};
-		//color the squares
-		DrawShapes(vertices, color);
-		
-		// Delete all the objects we've created
-		// glDeleteVertexArrays(1, &VAO);
-		// glDeleteBuffers(1, &VBO);
-		// glDeleteProgram(shaderProgram);
+		vertices = PopulateVertices(false);
+		std::vector<GLfloat> brown_color {0.7f, 0.35f, 0.0f};
+		DrawShapes(vertices, kNrOfVerticesPerSquare * kNrSquaresToBeColored, brown_color);
 	}
 
 	bool GLFWRenderer::poll() {

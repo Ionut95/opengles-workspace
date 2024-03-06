@@ -18,7 +18,7 @@ class GLFWRenderer : public PolledObject
 	public:
 		GLFWRenderer(std::shared_ptr<Context> context);
 
-		~GLFWRenderer(); //= default;
+		~GLFWRenderer();
 
 		void render();
 
@@ -32,6 +32,7 @@ class GLFWRenderer : public PolledObject
 		const size_t kNrOfVerticesPerSquare = 6;
 		const size_t kNrRows = sqrt(kNrTotalSquares);
 		const size_t kNrColumns = sqrt(kNrTotalSquares);
+		bool is_background_colored = false;
 
 		GLuint VAO; 
 		GLuint VBO;
@@ -44,7 +45,7 @@ class GLFWRenderer : public PolledObject
 		static const char* fragmentShaderSource;
 
 		std::vector<GLfloat> PopulateVertices(bool is_same_index);
-		void DrawShapes(std::vector<GLfloat> vertices, std::vector<GLfloat> color);
+		void DrawShapes(std::vector<GLfloat> vertices, size_t totalVerticesPerShape, std::vector<GLfloat> color);
 
 		std::shared_ptr<Context> mContext;
 		GLFWwindow* window() const { return static_cast<GLFWwindow*>(mContext->window()); }
