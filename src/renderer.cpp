@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <vector>
+#include <iostream>
 
 #include <glad/gl.h>
 #define GLFW_INCLUDE_NONE
@@ -16,53 +17,18 @@ namespace opengles_workspace
 {
 	GLFWRenderer::GLFWRenderer(std::shared_ptr<Context> context)
 		: mContext(std::move(context))
+		, vertexShader(glCreateShader(GL_VERTEX_SHADER))
+		, fragmentShader(glCreateShader(GL_FRAGMENT_SHADER))
+		, shaderProgram (glCreateProgram())
 	{
-	}
-
-	void GLFWRenderer::render() {
-		//kNrTotalSquares needs to be perfect square
-		const size_t kNrTotalSquares = 64;
-		const size_t kHalfNrSquares = kNrTotalSquares / 2;
-		//calculation needed to solve the problem of even/odd numbers
-		const size_t kNrSquaresToBeColored = (kNrTotalSquares % 2 == 0) ? kHalfNrSquares : kHalfNrSquares + 1;
-		const size_t kNrOfVerticesPerSquare = 6;
-
-		if(kNrTotalSquares == 0)
-			return;
-
-		// Vertex Shader source code
-		const char* vertexShaderSource = "#version 330 core\n"
-		"layout (location = 0) in vec3 aPos;\n"
-		"void main()\n"
-		"{\n"
-		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-		"}\0";
-		//Fragment Shader source code
-		const char* fragmentShaderSource = "#version 330 core\n"
-		"uniform vec3 figColor;\n"
-		"out vec4 FragColor;\n"
-		"void main()\n"
-		"{\n"
-		"   FragColor = vec4(figColor, 1.0f);\n"
-		"}\n\0";
-
-		// Create Vertex Shader Object and get its reference
-		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		// Attach Vertex Shader source to the Vertex Shader Object
 		glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
 		// Compile the Vertex Shader into machine code
 		glCompileShader(vertexShader);
 
-		// Create Fragment Shader Object and get its reference
-		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		// Attach Fragment Shader source to the Fragment Shader Object
 		glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
 		// Compile the Vertex Shader into machine code
 		glCompileShader(fragmentShader);
 
-		// Create Shader Program Object and get its reference
-		GLuint shaderProgram = glCreateProgram();
-		// Attach the Vertex and Fragment Shaders to the Shader Program
 		glAttachShader(shaderProgram, vertexShader);
 		glAttachShader(shaderProgram, fragmentShader);
 		// Wrap-up/Link all the shaders together into the Shader Program
@@ -72,20 +38,43 @@ namespace opengles_workspace
 		glDeleteShader(vertexShader);
 		glDeleteShader(fragmentShader);
 
+		// Generate the VAO and VBO with only 1 object each
+		glGenVertexArrays(1, &VAO);
+		glGenBuffers(1, &VBO);
+	}
 
-		std::vector<GLfloat> vertices {};
-		//vertices.reserve(kTotalValues);
+	GLFWRenderer::~GLFWRenderer()
+	{
+		// Delete all the objects we've created
+		glDeleteVertexArrays(1, &VAO);
+		glDeleteBuffers(1, &VBO);
+		glDeleteProgram(shaderProgram);
+	}
 
-		//top left corner of englobing square
+	const char* GLFWRenderer::vertexShaderSource = "#version 330 core\n"
+		"layout (location = 0) in vec3 aPos;\n"
+		"void main()\n"
+		"{\n"
+		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+		"}\0";
+	const char* GLFWRenderer::fragmentShaderSource = "#version 330 core\n"
+		"uniform vec3 figColor;\n"
+		"out vec4 FragColor;\n"
+		"void main()\n"
+		"{\n"
+		"   FragColor = vec4(figColor, 1.0f);\n"
+		"}\n\0";
+
+	std::vector<GLfloat> GLFWRenderer::PopulateVertices(bool is_same_index)
+	{
 		GLfloat x = -0.5f;
 		GLfloat y =  0.5f;
 		GLfloat side_length = 0.125f;
-		const int kNrRows = sqrt(kNrTotalSquares);
-		const int kNrColumns = sqrt(kNrTotalSquares);
+		std::vector<GLfloat> vertices;
 
-		for(int i = 1; i <= kNrRows; ++i)
+		for(size_t i = 1; i <= kNrRows; ++i)
 		{
-			for(int j = 1; j <= kNrColumns; ++j)
+			for(size_t j = 1; j <= kNrColumns; ++j)
 			{
 				//upper triangle
 				GLfloat upper_top_left_x = x;
@@ -103,7 +92,10 @@ namespace opengles_workspace
 				GLfloat lower_bottom_right_y = y - side_length;
 
 				//pushing coordinates of squares needing to be colored
-				if((i % 2 != 0 && j % 2 != 0) || (i % 2 == 0 && j % 2 == 0))
+				//squares with first color when i and j are even and the row is even OR when i and j are odd and the row is odd and is_same_index is true
+				//squares with second color i and j are odd when row even and odd when row is even and is_same_index is false
+				if((((i % 2 != 0 && j % 2 != 0) || (i % 2 == 0 && j % 2 == 0)) && is_same_index == true) ||
+				  (((i % 2 == 0 && j % 2 == 0) || (i % 2 != 0 && j % 2 != 0)) && is_same_index == false))
 				{
 					vertices.push_back(upper_top_left_x);
 					vertices.push_back(upper_top_left_y);
@@ -125,16 +117,13 @@ namespace opengles_workspace
 			y -= side_length;
 		}
 
-		// Create reference containers for the Vartex Array Object and the Vertex Buffer Object
-		GLuint VAO, VBO;
+		return vertices;
+	}
 
-		// Generate the VAO and VBO with only 1 object each
-		glGenVertexArrays(1, &VAO);
-		glGenBuffers(1, &VBO);
-
+	void GLFWRenderer::DrawShapes(std::vector<GLfloat> vertices, std::vector<GLfloat> color)
+	{
 		// Make the VAO the current Vertex Array Object by binding it
 		glBindVertexArray(VAO);
-
 		// Bind the VBO specifying it's a GL_ARRAY_BUFFER
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		// Introduce the vertices into the VBO
@@ -156,21 +145,44 @@ namespace opengles_workspace
 		glUseProgram(shaderProgram);
 		//uniform for rendering different colors
 		GLint uniform = glGetUniformLocation(shaderProgram, "figColor");
-		glUniform3f(uniform, 1.0f, 0.2f, 0.0f);
+		glUniform3f(uniform, color[0], color[1], color[2]);
 		// Bind the VAO so OpenGL knows to use it
 		glBindVertexArray(VAO);
 		// Draw the triangle using the GL_TRIANGLES primitive
 		glDrawArrays(GL_TRIANGLES, 0, kNrOfVerticesPerSquare * kNrSquaresToBeColored);
 
 		// Delete all the objects we've created
-		glDeleteVertexArrays(1, &VAO);
-		glDeleteBuffers(1, &VBO);
-		glDeleteProgram(shaderProgram);
-
+		//glDeleteVertexArrays(1, &VAO);
+		//glDeleteBuffers(1, &VBO);
+		//glDeleteProgram(shaderProgram);
 
 
 		// GL code end
 		glfwSwapBuffers(window());
+	}
+
+	void GLFWRenderer::render() {
+		if(kNrTotalSquares == 0)
+			return;
+		std::cout << "after return render";
+		//get first set of squares coordinates
+		std::vector<GLfloat> vertices {PopulateVertices(true)};
+		//brown color
+		std::vector<GLfloat> color {0.8f, 0.35f, 0.05f};
+		//color the squares
+		DrawShapes(vertices, color);
+
+		//get second set of squares coordinates
+		vertices = PopulateVertices(true);
+		//brown color
+		std::vector<GLfloat> color1 {1.0f, 1.0f, 1.0f};
+		//color the squares
+		DrawShapes(vertices, color);
+		
+		// Delete all the objects we've created
+		// glDeleteVertexArrays(1, &VAO);
+		// glDeleteBuffers(1, &VBO);
+		// glDeleteProgram(shaderProgram);
 	}
 
 	bool GLFWRenderer::poll() {
