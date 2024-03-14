@@ -1,2 +1,2 @@
-rows : 7
-columns : 7
+rows : 1
+columns : 1

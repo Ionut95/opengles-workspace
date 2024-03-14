@@ -11,6 +11,7 @@
 #include <GLFW/glfw3.h>
 
 #include "texture.h"
+#include "timer.hpp"
 
 namespace opengles_workspace
 {
@@ -24,8 +25,27 @@ class GLFWRenderer : public PolledObject
 		void render();
 
 		bool poll() override;
+
+		void CheckMovementDirection();
+		void MoveObject(GLfloat offset);
+
 	private:
 		Texture texture;
+		Timer* timer = nullptr;
+
+		std::vector<GLfloat> vertices_ {
+			-0.125f, -0.75f,
+			 0.125f, -0.75f,
+			-0.125f, -1.0f,
+
+			 0.125f, -0.75f,
+			-0.125f, -1.0f,
+			 0.125f, -1.0f 
+		};
+
+		std::chrono::system_clock::time_point last_rendered_ = std::chrono::system_clock::now();
+		bool is_going_up_ = true;
+		int cnt_ = 0;
 
 		size_t nr_rows = 0;
 		size_t nr_columns = 0;

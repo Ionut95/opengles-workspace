@@ -22,9 +22,9 @@ namespace opengles_workspace
 		, vertexShader(glCreateShader(GL_VERTEX_SHADER))
 		, fragmentShader(glCreateShader(GL_FRAGMENT_SHADER))
 		, shaderProgram (glCreateProgram())
-		, texture(Texture((char*)("../Textures/chess_img.jpg")))
+		//, texture(Texture((char*)("../Textures/chess_img.jpg")))
 	{
-		texture.LoadTexture();
+		//texture.LoadTexture();
 
 		std::tuple<size_t,size_t> rows_columns(ReadData());
 		nr_rows = std::get<0>(rows_columns);
@@ -95,21 +95,23 @@ namespace opengles_workspace
 	const char* GLFWRenderer::vertexShaderSource = "#version 300 es\n"
 		"precision lowp float;\n"
 		"layout (location = 0) in vec3 aPos;\n"
-		"layout (location = 1) in vec2 tex;\n"
-		"out vec2 TexCoord;\n"
+		//"layout (location = 1) in vec2 tex;\n"
+		//"out vec2 TexCoord;\n"
 		"void main()\n"
 		"{\n"
 		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-		"   TexCoord  = tex;\n"
+		//"   TexCoord  = tex;\n"
 		"}\0";
 	const char* GLFWRenderer::fragmentShaderSource = "#version 300 es\n"
 		"precision lowp float;\n"
-		"uniform sampler2D theTexture;\n"
-		"in vec2 TexCoord;\n"
+		//"uniform sampler2D theTexture;\n"
+		//"in vec2 TexCoord;\n"
+		//"uniform vec3 figColor;\n"
 		"out vec4 FragColor;\n"
 		"void main()\n"
 		"{\n"
-		"   FragColor = texture(theTexture, TexCoord);\n"
+		//"   FragColor = texture(theTexture, TexCoord);\n"
+		"   FragColor = vec4(0.7f, 0.35f, 0.0f, 1.0f);\n"
 		"}\n\0";
 
 	std::vector<GLfloat> GLFWRenderer::PopulateVertices(bool is_same_index)
@@ -177,14 +179,14 @@ namespace opengles_workspace
 		glBindVertexArray(VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(sizeof(float) * 2));
-		glEnableVertexAttribArray(1);
+		//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(sizeof(float) * 2));
+		//glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 
-		if (!is_background_colored)
+		//if (!is_background_colored)
 		{
 			//beige
 			glClearColor(1.0f, 0.8f, 0.4f, 1.0f);
@@ -195,8 +197,9 @@ namespace opengles_workspace
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
 		//eliminate the number of texture coordinates - they are not needed
-		size_t total_nr_squares_coordinates = vertices.size() / 2;
-		size_t nr_of_squares = total_nr_squares_coordinates / kNrCoordinatesPerSquare;
+		//size_t total_nr_squares_coordinates = vertices.size() / 2;
+		//size_t nr_of_squares = total_nr_squares_coordinates / kNrCoordinatesPerSquare;
+		size_t nr_of_squares = vertices.size() / kNrCoordinatesPerSquare;
 		glDrawArrays(GL_TRIANGLES, 0, kNrOfVerticesPerSquare * nr_of_squares);
 
 		glfwSwapBuffers(window());
@@ -206,21 +209,52 @@ namespace opengles_workspace
 		if(nr_total_squares == 0)
 			return;
 		
-		//get first set of squares coordinates
-		std::vector<GLfloat> vertices {PopulateVertices(true)};
-		texture.UseTexture();
-		DrawShapes(vertices);
-
-		//get second set of squares coordinates
-		vertices = PopulateVertices(false);
-		DrawShapes(vertices);
+		last_rendered_ = std::chrono::system_clock::now();
+		DrawShapes(vertices_);
 	}
 
 	bool GLFWRenderer::poll() {
+
+		auto delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_rendered_).count() / 1000.0f;
+		const int fps = 60;
+		if(delta_time >= 1.0 / fps)
+		{
+			CheckMovementDirection();
+			render();
+		}
+
 		if (glfwWindowShouldClose(window())) {
 			return false;
 		}
 		return true;
+	}
+
+	void GLFWRenderer::CheckMovementDirection() 
+	{
+		GLfloat box_down_side = vertices_[11];
+		GLfloat box_up_side = vertices_[1];
+		GLfloat down_boundary = -1.0f;
+		GLfloat up_boundary = 1.0f;
+
+		if(box_down_side <= down_boundary)
+			is_going_up_ = true;
+
+		if(box_up_side >= up_boundary)
+			is_going_up_ = false;
+
+		if(is_going_up_)
+			MoveObject(0.00625f);
+		else
+			MoveObject(-0.00625f);
+	}
+
+	void GLFWRenderer::MoveObject(GLfloat offset) 
+	{
+		for(size_t it = 0; it < vertices_.size(); ++it)
+		{
+			if(it % 2 != 0)
+				vertices_[it] += offset;
+		}
 	}
 
 	std::tuple<size_t, size_t> GLFWRenderer::ReadData() const
