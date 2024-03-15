@@ -4,7 +4,7 @@ project(opengles-workspace)
 add_subdirectory(third_party/glfw)
 add_subdirectory(third_party/glad)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++17")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g --std=c++17")
 
 add_library(opengles-workspace_lib STATIC 
     src/glfw_application.cpp
@@ -13,6 +13,7 @@ add_library(opengles-workspace_lib STATIC
     src/input.cpp
     src/texture.cpp
     src/timer.cpp
+    src/matrix_generation.cpp
     third_party/glad/GL/src/gl.c
     )
 

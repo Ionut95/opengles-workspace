@@ -22,9 +22,9 @@ namespace opengles_workspace
 		, vertexShader(glCreateShader(GL_VERTEX_SHADER))
 		, fragmentShader(glCreateShader(GL_FRAGMENT_SHADER))
 		, shaderProgram (glCreateProgram())
-		//, texture(Texture((char*)("../Textures/chess_img.jpg")))
+		//, window_matrix(MatrixGeneration())
 	{
-		//texture.LoadTexture();
+		std::cout << "\nsize matrix: "; //<< window_matrix.window_matrix_[0][0].size();
 
 		std::tuple<size_t,size_t> rows_columns(ReadData());
 		nr_rows = std::get<0>(rows_columns);
@@ -95,84 +95,18 @@ namespace opengles_workspace
 	const char* GLFWRenderer::vertexShaderSource = "#version 300 es\n"
 		"precision lowp float;\n"
 		"layout (location = 0) in vec3 aPos;\n"
-		//"layout (location = 1) in vec2 tex;\n"
-		//"out vec2 TexCoord;\n"
 		"void main()\n"
 		"{\n"
 		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-		//"   TexCoord  = tex;\n"
 		"}\0";
 	const char* GLFWRenderer::fragmentShaderSource = "#version 300 es\n"
 		"precision lowp float;\n"
-		//"uniform sampler2D theTexture;\n"
-		//"in vec2 TexCoord;\n"
 		//"uniform vec3 figColor;\n"
 		"out vec4 FragColor;\n"
 		"void main()\n"
 		"{\n"
-		//"   FragColor = texture(theTexture, TexCoord);\n"
 		"   FragColor = vec4(0.7f, 0.35f, 0.0f, 1.0f);\n"
 		"}\n\0";
-
-	std::vector<GLfloat> GLFWRenderer::PopulateVertices(bool is_same_index)
-	{
-		GLfloat x = -1.0f;
-		GLfloat y =  1.0f;
-		GLfloat side_length = 2.0 / static_cast<GLfloat>(nr_columns);
-		GLfloat side_width = 2.0 / static_cast<GLfloat>(nr_rows);
-		std::vector<GLfloat> vertices;
-
-		for(size_t i = 1; i <= nr_rows; ++i)
-		{
-			for(size_t j = 1; j <= nr_columns; ++j)
-			{
-				//upper triangle
-				GLfloat upper_top_left_x = x;
-				GLfloat upper_top_left_y = y;
-				GLfloat upper_top_right_x = x + side_length;
-				GLfloat upper_top_right_y = y;
-				GLfloat upper_bottom_left_x = x;
-				GLfloat upper_bottom_left_y = y - side_width;
-				//lower triangle
-				GLfloat lower_top_right_x = x + side_length;
-				GLfloat lower_top_right_y = y;
-				GLfloat lower_bottom_left_x = x;
-				GLfloat lower_bottom_left_y = y - side_width;
-				GLfloat lower_bottom_right_x = x + side_length;
-				GLfloat lower_bottom_right_y = y - side_width;
-
-				//squares with 
-				//		- first texture: when i and j are same parity
-				//		- second texture: when i and j are different parity
-				//differentiate between squares sets with is_same_index
-				bool is_same_parity = ((i & 1) == (j & 1));
-				if(is_same_parity == is_same_index)
-				{
-					float offset = is_same_index ? 0.0f : 0.5f;
-					vertices.insert
-					(
-						//				upper triangle
-						vertices.end(), {
-										upper_top_left_x, upper_top_left_y, 0.0f + offset, 1.0f, 
-										upper_top_right_x, upper_top_right_y, 0.5f + offset, 1.0f,
-										upper_bottom_left_x, upper_bottom_left_y, 0.0f + offset, 0.0f,
-						//				lower triangle
-										lower_top_right_x, lower_top_right_y, 0.5f + offset, 1.0f,
-										lower_bottom_left_x, lower_bottom_left_y, 0.0f + offset, 0.0f,
-										lower_bottom_right_x, lower_bottom_right_y, 0.5f + offset, 0.0f
-										}
-					);
-				}
-
-				x += side_length;
-			}
-			
-			x  =  -1.0f;
-			y -= side_width;
-		}
-
-		return vertices;
-	}
 
 	void GLFWRenderer::DrawShapes(std::vector<GLfloat> vertices)
 	{
@@ -181,24 +115,14 @@ namespace opengles_workspace
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
-		//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(sizeof(float) * 2));
-		//glEnableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
-
-		//if (!is_background_colored)
-		{
-			//beige
-			glClearColor(1.0f, 0.8f, 0.4f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT);
-			is_background_colored = true;
-		}
+		
+		glClearColor(1.0f, 0.8f, 0.4f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 		
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
-		//eliminate the number of texture coordinates - they are not needed
-		//size_t total_nr_squares_coordinates = vertices.size() / 2;
-		//size_t nr_of_squares = total_nr_squares_coordinates / kNrCoordinatesPerSquare;
 		size_t nr_of_squares = vertices.size() / kNrCoordinatesPerSquare;
 		glDrawArrays(GL_TRIANGLES, 0, kNrOfVerticesPerSquare * nr_of_squares);
 
@@ -216,7 +140,7 @@ namespace opengles_workspace
 	bool GLFWRenderer::poll() {
 
 		auto delta_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - last_rendered_).count() / 1000.0f;
-		const int fps = 60;
+		const int fps = 100;
 		if(delta_time >= 1.0 / fps)
 		{
 			CheckMovementDirection();
