@@ -4,6 +4,8 @@
 #include "input.hpp"
 #include "main_loop.hpp"
 #include "renderer.hpp"
+#include "bouncing_box_state.hpp"
+#include "manager.hpp"
 
 #include <memory>
 #include <iostream>
@@ -46,6 +48,9 @@ int GlfwApplication::run() {
 	gladLoadGL(glfwGetProcAddress);
 	glfwSwapInterval(1);
 
+	std::shared_ptr<BouncingBoxState> pBouncingBoxState = std::make_shared<BouncingBoxState>();
+	
+
 	MainLoop loop;
 	auto ctx = std::make_shared<Context>(pWindow.get());
 	std::shared_ptr<Input> pInput(Input::create(ctx));
@@ -57,10 +62,13 @@ int GlfwApplication::run() {
 			}
 			return true;
 		});
+	
+	std::shared_ptr<Manager> pManager = std::make_shared<Manager>(pBouncingBoxState, pRenderer);
 
+	loop.addPolledObject(pManager);
 	loop.addPolledObject(pInput);
-	loop.addPolledObject(pRenderer);
-	pRenderer->render();
+	//loop.addPolledObject(pRenderer);
+	pRenderer->render(pBouncingBoxState->GetObjectRow(),pBouncingBoxState->GetObjectColumn(),pBouncingBoxState->GetNrRows(),pBouncingBoxState->GetNrColumns());
 	loop.run();
 	return 0;
 }

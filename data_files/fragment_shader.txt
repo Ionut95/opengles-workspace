@@ -1,0 +1,11 @@
+#version 300 es
+precision lowp float;
+
+uniform vec3 figColor;
+
+out vec4 FragColor;
+
+void main()
+{
+   FragColor = vec4(0.2f, 0.35f, 0.0f, 1.0f);
+}

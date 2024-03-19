@@ -13,7 +13,11 @@ add_library(opengles-workspace_lib STATIC
     src/input.cpp
     src/texture.cpp
     src/timer.cpp
-    src/matrix_generation.cpp
+    src/bouncing_box_state.cpp
+    src/manager.cpp
+    src/box_coordinates.cpp
+    src/program.cpp
+    src/rectangle.cpp
     third_party/glad/GL/src/gl.c
     )
 

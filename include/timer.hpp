@@ -1,31 +1,26 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 
 namespace opengles_workspace
 {
 class Timer {
     public:
-        static Timer* Instance();
-        static void Release();
-        static bool IsInitialized();
+        static std::unique_ptr<Timer> Instance();
         
         void Reset();
-        float GetDeltaTime() const;
         void SetTimeScale(float t = 1.0f);
         float GetTimeScale() const;
-        void Tick();
+        float CalculateDeltaTime() const;
+        bool IsTimeUp();
         
-        static float frame_rate_;
+        ~Timer() = default;
     
     private:
         Timer();
-        ~Timer();
-
-        static Timer* s_instance_;
 
         std::chrono::system_clock::time_point start_time_;
-        std::chrono::duration<float> delta_time_;
         float time_scale_;
 };
 } // namespace opengles_workspace

@@ -1,41 +1,24 @@
 #include "timer.hpp"
-#include <iostream>
 
-using namespace std::literals;
+#include <iostream>
+#include <memory>
 
 namespace opengles_workspace
 {
-Timer* Timer::s_instance_ = nullptr;
-float Timer::frame_rate_ = 1.0f / 30.0f;
+std::unique_ptr<Timer> Timer::Instance() {
+    static std::unique_ptr<Timer> instance = std::make_unique<Timer>(Timer());
 
-Timer* Timer::Instance() {
-    if(s_instance_ == nullptr)
-        s_instance_ = new Timer();
-    
-    return s_instance_;
+    return std::move(instance);
 }
 
-bool Timer::IsInitialized() {
-    return s_instance_ != nullptr;
-}
-
-Timer::Timer() {
+Timer::Timer() 
+    : time_scale_(0.5f)
+{
     Reset();
-    time_scale_ = 1.0f;
-    delta_time_ = std::chrono::duration<float>(0.0f);
-}
-
-Timer::~Timer() {
-    delete s_instance_;
-    s_instance_ = nullptr;
 }
 
 void Timer::Reset() {
     start_time_ = std::chrono::system_clock::now();
-}
-
-float Timer::GetDeltaTime() const {
-    return delta_time_.count();
 }
 
 void Timer::SetTimeScale(float t /* = 1.0f */) {
@@ -46,8 +29,16 @@ float Timer::GetTimeScale() const {
     return time_scale_;
 }
 
-void Timer::Tick() {
-    delta_time_ = std::chrono::system_clock::now() - start_time_;
+float Timer::CalculateDeltaTime() const {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start_time_).count() / 1000.0f;
+}
+
+bool Timer::IsTimeUp() {
+     if(!(CalculateDeltaTime() >= time_scale_))
+        return false;
+    
+    Reset();
+    return true;
 }
 
 } // namespace opengles_workspace
